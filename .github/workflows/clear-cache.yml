@@ -1,0 +1,54 @@
+name: Auto Cache Busting (GitHub Raw)
+
+on:
+  push:
+    branches:
+      - develop  # Chỉ chạy khi push lên nhánh develop
+
+# Cấp quyền cho Action được phép ghi lại vào repo của bạn
+permissions:
+  contents: write
+
+jobs:
+  cache-bust:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout code về server của Action
+      - uses: actions/checkout@v4
+        with:
+          # Cần token để có quyền push lại code đã sửa
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Lấy 7 ký tự đầu của commit hash mới nhất
+      - name: Get commit hash
+        id: get_hash
+        run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      # 3. Dùng "sed" để tìm và thay thế link trong file test.js
+      - name: Update URLs with commit hash
+        run: |
+          HASH="${{ steps.get_hash.outputs.hash }}"
+          FILE="test.js"
+          
+          echo "Updating URLs in $FILE with unique hash: $HASH"
+          
+          # Tìm dòng @downloadURL và thay thế bằng link raw GitHub có hash
+          sed -i "s|^\(\s*\/\/ @downloadURL\s\+\).*|\1https://raw.githubusercontent.com/bee-sample/tampermonkey-deployment/develop/test.js?v=$HASH|" $FILE
+          
+          # Tìm dòng @updateURL và thay thế
+          sed -i "s|^\(\s*\/\/ @updateURL\s\+\).*|\1https://raw.githubusercontent.com/bee-sample/tampermonkey-deployment/develop/test.js?v=$HASH|" $FILE
+          
+          # In ra nội dung file để kiểm tra trong log
+          echo "--- File content after update ---"
+          cat $FILE
+
+      # 4. Commit và push lại file đã được tự động sửa
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add test.js
+          # Dùng --amend để gộp vào commit cũ, giữ lịch sử Git sạch sẽ
+          git commit --amend --no-edit
+          # Push lại với --force-with-lease để an toàn hơn --force
+          git push --force-with-lease

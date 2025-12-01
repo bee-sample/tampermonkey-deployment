@@ -1,0 +1,20 @@
+name: Purge jsDelivr Cache
+
+#on:
+#  push:
+#    branches:
+#      - develop  # Chỉ chạy khi push lên nhánh develop
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge jsDelivr cache
+        run: |
+          # Purge file cụ thể
+          curl -s "https://purge.jsdelivr.net/gh/bee-sample/tampermonkey-deployment@develop/test.js"
+
+          # Purge toàn bộ nhánh develop (để chắc chắn)
+          curl -s "https://purge.jsdelivr.net/gh/bee-sample/tampermonkey-deployment@develop"
+
+          echo "✅ Cache purged successfully!"
